@@ -1,23 +1,20 @@
-<!---
-This task takes all the completed parses and publishes them
- --->
-<cfcomponent hint="" output="false" accessors="true">
+/*
+Takes all the completed parses and publishes them. Implements the java.lang.Runnable interface
+ */
+component output="false" accessors="true"{
 
-	<cfproperty name="publishers">
+	property name="publishers" type="array";
 
-	<cffunction name="init" output="false" access="public" returntype="any" hint="">
-    	<cfargument name="parseService" type="any" required="true"/>
-		<cfargument name="publishers" type="array" required="true"/>
+	public function init( any parseService, array publishers ){
+		structAppend( variables, arguments );
+		return this;
+	}
 
-		<cfset structAppend( variables, arguments )>
-		<cfreturn this>
-    </cffunction>
-
-
-	<cffunction name="run" output="false" access="public" returntype="void" hint="">
-
-    	<cfscript>
-    	var allResults = [];
+	/*
+	* pulls completed tasks off of the completion queue and submits them to all registered publishers
+	*/
+	public function run(){
+		var allResults = [];
 		var thisTask = parseService.poll();
 		while(  NOT isNull( thisTask ) ){
 
@@ -35,15 +32,10 @@ This task takes all the completed parses and publishes them
 		}
 
 		if( NOT arrayIsEmpty(allResults) ){
-			for( publisher in publishers ){
+			for( var publisher in publishers ){
 				publisher.publish( allResults );
 			}
 		}
+	}
 
-		</cfscript>
-
-
-
-    </cffunction>
-
-</cfcomponent>
+}

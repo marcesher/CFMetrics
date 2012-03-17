@@ -2,7 +2,7 @@ component extends="BaseCFMetricsTestCase"{
 
 	function setUp(){
 		testQuery = getTestQuery();
-		parseTask = new CFMetrics.MetricsParseTask( testQuery );
+		parseTask = new CFMetrics.MetricsParseTask( "cfmetrics", testQuery );
 	}
 
 	function call_should_create_array_of_metrics_based_on_input_query(){

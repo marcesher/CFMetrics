@@ -1,16 +1,14 @@
 component accessors="true" {
 
-	property name="publishFrequency" type="numeric" hint="In seconds, how frequently should gathered metrics be published?";
-
 	hasBeenStarted = false;
 	taskInterfaces = ["java.util.concurrent.Callable"];
 	supportsNativeProxy = structKeyExists( getFunctionList(), "createDynamicProxy" );
 	status = "stopped";
 
-	debuggerUnavailbleQuery = queryNew('DebuggerUnavailable');
+	debuggerUnavailableQuery = queryNew('DebuggerUnavailable');
 	serviceNotRunningQuery = queryNew('ServiceNotRunning');
 
-	function init( publishFrequency = 120, publishers ){
+	function init( string applicationName, publishFrequency = 120, publishers ){
 		variables.timeUnit = createObject( "java", "java.util.concurrent.TimeUnit" );
 		variables.metricsDebuggingService = createObject( "java", "coldfusion.server.ServiceFactory" ).getDebuggingService();
 		structAppend( variables, arguments );
@@ -99,39 +97,43 @@ component accessors="true" {
 		return NOT isNull( metricsDebuggingService.getDebugger() );
 	}
 
-	private function getMetricsDataFromDebugger(){
+	public function getMetricsDataFromDebugger(){
+
 		//when debug output is disabled in CFAdmin, this will be null; however, we can't use isDebugMode() because that returns
 		//false when debugging is enabled in CFAdmin but cfsetting showdebugoutput='false' is set
+
 		if( isDebuggerAvailable() ){
 			var qEvents =  metricsDebuggingService.getDebugger().getData();
 			return new Query(dbtype="query",
 				sql="
-					SELECT  template, Sum(endTime - startTime) AS totalExecutionTime
+					SELECT template, endTime - startTime AS totalExecutionTime
 					FROM qEvents
 					WHERE type = 'Template'
 					and endTime <> startTime
 					and parent not like '%ModelGlue%'
 					and parent not like '%Coldspring%'
 					and template not like '%EventContext.cfc'
-					group by template
-					order by totalExecutionTime DESC"
+
+					order by totalExecutionTime DESC
+					"
 				, qEvents=qEvents).execute().getResult();
 
 		} else {
-			return debuggerUnavailbleQuery;
+			return debuggerUnavailableQuery;
 		}
 	}
 
-	private function submitCollection( summaryQuery ){
-		var task = new MetricsParseTask( summaryQuery );
+	private void function submitCollection( summaryQuery ){
+
+		var task = new MetricsParseTask( variables.applicationName, summaryQuery );
 		var proxy = createProxy( task, taskInterfaces );
+
 		try{
 			metricsParseService.submit( proxy );
 			//writeLog("metrics collection of size #summaryQuery.recordCount# submitted for processing");
 		} catch( any e ){
 			writeLog(e.message);
 		}
-		return summaryQuery;
 	}
 
 	private function getStatus(){

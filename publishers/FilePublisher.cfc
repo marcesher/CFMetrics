@@ -1,26 +1,24 @@
-<!---
-Writes parse results to a file
- --->
-<cfcomponent hint="" output="false">
+/*
+* Writes parse results to a file
+*/
 
-	<cffunction name="init" output="false" access="public" returntype="any" hint="">
-		<cfargument name="fileOutputDir" type="string" required="false" default="#getDirectoryFromPath(getCurrentTemplatePath())#/metrics_output/"/>
-		<cfargument name="fieldDelimiter" type="string" required="false" default="#chr(9)#"/>
-		<cfargument name="showHeaders" type="boolean" required="false" default="true"/>
+component output="false"{
 
-		<cfset structAppend( variables, arguments )>
-		<cfset createObject("java", "java.io.File").init(fileOutputDir).mkdirs()>
-		<cfset var headerFields = ["template", "method", "args", "totalExecutionTime"]>
-		<cfset variables.header = arrayToList(headerFields, fieldDelimiter) & chr(10)>
+	public function init( string fileOutputDir, string fieldDelimiter="#chr(9)#", boolean showHeaders=true){
 
-		<cfreturn this>
-    </cffunction>
+		structAppend( variables, arguments );
+		createObject("java", "java.io.File").init(fileOutputDir).mkdirs();
+		var headerFields = ["template", "method", "args", "totalExecutionTime"];
+		variables.header = arrayToList(headerFields, fieldDelimiter) & chr(10);
+		return this;
+	}
 
-	<cffunction name="publish" output="false" access="public" returntype="any" hint="Writes results to a structured text file">
-		<cfargument name="data" type="array" required="true" hint="An array of structs. Each struct will contain fields: template, method, args, totalExecutionTime"/>
+	/**
+	* @data An array of structs. Each struct will contain fields: template, method, args, totalExecutionTime
+	*/
+	public function publish( array data ){
 
-    	<cfscript>
-    	var outputFile = "";
+		var outputFile = "";
     	try{
 			var d = variables.fieldDelimiter;
 			var stringData = "";
@@ -42,14 +40,9 @@ Writes parse results to a file
     	}
 
     	return outputFile;
+	}
 
-		</cfscript>
-
-    </cffunction>
-
-    <cffunction name="getFileName" output="false" access="public" returntype="string" hint="">
-
-    	<cfreturn "#getTickCount()#.log">
-    </cffunction>
-
-</cfcomponent>
+	private function getFileName(){
+		return "#getTickCount()#.log";
+	}
+}

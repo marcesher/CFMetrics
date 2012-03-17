@@ -5,7 +5,7 @@ component extends="cfmetrics.tests.BaseCFMetricsTestCase" {
 	function setUp(){
 		removeOutputDirectory();
 		testQuery = getTestQuery();
-		parseTask = new CFMetrics.MetricsParseTask( testQuery );
+		parseTask = new CFMetrics.MetricsParseTask( "cfmetrics", testQuery );
 		publisher = new CFMetrics.publishers.FilePublisher( outputDirectory );
 	}
 

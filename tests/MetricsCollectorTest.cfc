@@ -4,7 +4,7 @@ component extends="cfmetrics.tests.BaseCFMetricsTestCase"{
 		publisher = new publishers.VariablePublisher();
 		publisher2 = new publishers.VariablePublisher();
 		//use the same publisher twice... doing this to test that multiple publishers are honored
-		collector = new cfmetrics.MetricsCollector(1, [ publisher, publisher2 ]);
+		collector = new cfmetrics.MetricsCollector("cfmetrics", 1, [ publisher, publisher2 ]);
 
 	}
 
@@ -33,28 +33,37 @@ component extends="cfmetrics.tests.BaseCFMetricsTestCase"{
 	}
 
 	function completionQueueSize_increments_when_tasks_are_completed(){
+		collector.start();
 		submitCollection();
 		sleep(100);
 		assertEquals( 1, collector.getCompletionQueueSize() );
 	}
 
 	function metricsCompletionTask_publishes_to_all_publishers(){
+		collector.start();
 		var query = submitCollection();
+		submitCollection();
+		//at this point, we'll have submitted two collections (identical in size)
+		var initialExpectedSize = query.recordCount * 2;
+
 		sleep(1100);//since we set the reap time to 1 second up above
 		var pub1Result = publisher.getPublished();
 		var pub2Result = publisher2.getPublished();
-		assertTrue( arrayLen(pub1Result) GT 0 );
-		assertEquals( query.recordCount, arrayLen(pub1Result) );
-		assertEquals( query.recordCount, arrayLen(pub2Result) );
+
+		debug(collector.getCompletionQueueSize());
+
+		assertEquals( initialExpectedSize, arrayLen(pub1Result) );
+		assertEquals( initialExpectedSize, arrayLen(pub2Result) );
 
 		//do it again... we know that the submission uses a pre-built, static query
+		submitCollection();
 		submitCollection();
 		sleep(1100);
 		var pub1Result2 = publisher.getPublished();
 		var pub2Result2 = publisher2.getPublished();
 
-		assertEquals( query.recordCount * 2, arrayLen(pub1Result2) );
-		assertEquals( query.recordCount * 2, arrayLen(pub2Result2) );
+		assertEquals( initialExpectedSize * 2, arrayLen(pub1Result2) );
+		assertEquals( initialExpectedSize * 2, arrayLen(pub2Result2) );
 
 	}
 
@@ -74,7 +83,6 @@ component extends="cfmetrics.tests.BaseCFMetricsTestCase"{
 	private function submitCollection(){
 		injectProperty(collector, "thisDir", thisDir);
 		injectMethod(collector, this, "getTestQuery", "getMetricsDataFromDebugger");
-		collector.start();
 		return collector.collect();
 	}
 
