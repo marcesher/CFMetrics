@@ -4,8 +4,9 @@ Takes all the completed parses and publishes them. Implements the java.lang.Runn
 component output="false" accessors="true"{
 
 	property name="publishers" type="array";
+	
 
-	public function init( any parseService, array publishers ){
+	public function init( any parseService, MetricsCounter metricsCounter, array publishers ){
 		structAppend( variables, arguments );
 		return this;
 	}
@@ -15,6 +16,7 @@ component output="false" accessors="true"{
 	*/
 	public function run(){
 		var allResults = [];
+		var startTick = getTickCount();
 		var thisTask = parseService.poll();
 		while(  NOT isNull( thisTask ) ){
 
@@ -35,7 +37,10 @@ component output="false" accessors="true"{
 			for( var publisher in publishers ){
 				publisher.publish( allResults );
 			}
+			metricsCounter.addPublishCount(1);
 		}
+
+		metricsCounter.addPublishTime( getTickCount() - startTick );
 	}
 
 }

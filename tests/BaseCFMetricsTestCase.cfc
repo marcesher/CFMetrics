@@ -2,6 +2,7 @@
 
 	<cfset thisDir = getDirectoryFromPath(getCurrentTemplatePath())>
 	<cfset variables.outputDirectory = thisDir & "/tmpoutput">
+	<cfset variables.metricsCounter = new cfmetrics.MetricsCounter()>
 
 	<cffunction name="getTestQuery" output="false" access="private" returntype="query" hint="">
     	<cfset var wddx = "">

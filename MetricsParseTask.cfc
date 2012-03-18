@@ -3,23 +3,34 @@ component output="false"{
 	/**
 	* @metricsQuery a query from the CF Debugger service. Must contain columns template and totalExecutionTime
 	*/
-	public function init( string applicationName, query metricsQuery ){
+	public function init( query metricsQuery, MetricsCounter metricsCounter ){
 
 		structAppend( variables, arguments );
 		variables.timestamp = now();
-		variables.scriptName = cgi.SCRIPT_NAME;
-		variables.queryString = cgi.QUERY_STRING;
+		variables.parseResultStaticData = { timestamp = dateFormat(timestamp, "yyyy-mm-dd") & " " & timeFormat(timestamp, "HH:mm:ss"), scriptName = cgi.SCRIPT_NAME, queryString = cgi.QUERY_STRING };
+		variables.startQueueTick = getTickCount();
+		metricsCounter.addParseEventCount( metricsQuery.recordCount );
 		return this;
 	}
 
 	public any function call(){
-
+		writeLog("inside call");
+		var result = "";
+		var startTick = getTickCount();
+		metricsCounter.addParseQueueTime( startTick - variables.startQueueTick );
+		
 		try{
-			return createMetrics();
+			result = createMetrics();
 		} catch( any e ){
-			writeLog("Exception in MetricsParseTask.call(): #cfcatch.message#");
-			return cfcatch;
+			writeLog("Exception in MetricsParseTask.call(): #e.message#");
+			result = e;
 		}
+		
+		metricsCounter
+			.addParseTime( getTickCount() - startTick )
+			.addParseCount(1);
+		
+		return result;
 	}
 
 	public function createMetrics(){
@@ -30,6 +41,7 @@ component output="false"{
 		for( var row = 1; row <= rc; row++ ){
 			var result = parseTemplate( metricsQuery.template[row] );
 			result.totalExecutionTime = metricsQuery.totalExecutionTime[row];
+			structAppend( result, parseResultStaticData );
 			arrayAppend( all, result );
 		}
 

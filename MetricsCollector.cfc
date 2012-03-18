@@ -7,14 +7,19 @@ component accessors="true" {
 
 	debuggerUnavailableQuery = queryNew('DebuggerUnavailable');
 	serviceNotRunningQuery = queryNew('ServiceNotRunning');
-
-	function init( string applicationName, publishFrequency = 120, publishers ){
+	
+	//for internal metrics
+	metricsCounter = new MetricsCounter();
+	
+	function init( publishFrequency = 120, publishers ){
 		variables.timeUnit = createObject( "java", "java.util.concurrent.TimeUnit" );
 		variables.metricsDebuggingService = createObject( "java", "coldfusion.server.ServiceFactory" ).getDebuggingService();
 		structAppend( variables, arguments );
 		return this;
 	}
 
+	/* Lifecycle methods */
+	
 	public function start(){
 		//always ensure we shut down anything we previously created
 		stop();
@@ -26,7 +31,7 @@ component accessors="true" {
 		variables.metricsCompletionService = createObject("java", "java.util.concurrent.ScheduledThreadPoolExecutor").init( 1 );
 
 		//schedule the periodic persisting of the gathered metrics
-		var metricsCompletionTask = new MetricsCompletionTask( metricsParseService, variables.publishers );
+		variables.metricsCompletionTask = new MetricsCompletionTask( metricsParseService, metricsCounter, variables.publishers );
 		var proxy = createProxy( metricsCompletionTask, ["java.lang.Runnable"] );
 		variables.metricsCompletionService.scheduleAtFixedRate( proxy, publishFrequency, publishFrequency, timeUnit.SECONDS );
 
@@ -49,6 +54,7 @@ component accessors="true" {
 
 	public function pause(){
 		status = "paused";
+		return this;
 	}
 
 	public function unPause(){
@@ -57,30 +63,11 @@ component accessors="true" {
 		} else {
 			status = "started";
 		}
+		return this;
 	}
-
-	public function getCompletionQueueSize(){
-		if( isStopped() ){
-			throw("Completion Queue Size is unavailable when this service is stopped", "OperationUnavailableException");
-		} else {
-			return completionQueue.size();
-		}
-	}
-
-	public function isStarted(){
-		return getStatus() eq "started";
-	}
-
-	public function isStopped(){
-		return getStatus() eq "stopped";
-	}
-
-	public function isPaused(){
-		return getStatus() eq "paused";
-	}
-
+	
 	public function collect(){
-		writeLog("starting collection!")
+		writeLog("Starting Collection!")
 
 		if( isStarted() ){
 			var summary = getMetricsDataFromDebugger();
@@ -93,6 +80,33 @@ component accessors="true" {
 		}
 	}
 
+	
+	/* CFMetrics State methods */
+
+	public function isStarted(){
+		return getStatus() eq "started";
+	}
+
+	public function isStopped(){
+		return getStatus() eq "stopped";
+	}
+
+	public function isPaused(){
+		return getStatus() eq "paused";
+	}
+	
+	public function getCFMetricsCounters(){
+		return metricsCounter.getCounters();
+	}
+	
+	public function getCompletionQueueSize(){
+		if( isStopped() ){
+			throw("Completion Queue Size is unavailable when this service is stopped", "OperationUnavailableException");
+		} else {
+			return completionQueue.size();
+		}
+	}
+	
 	public function isDebuggerAvailable(){
 		return NOT isNull( metricsDebuggingService.getDebugger() );
 	}
@@ -101,10 +115,13 @@ component accessors="true" {
 
 		//when debug output is disabled in CFAdmin, this will be null; however, we can't use isDebugMode() because that returns
 		//false when debugging is enabled in CFAdmin but cfsetting showdebugoutput='false' is set
-
+		var result = debuggerUnavailableQuery;
+		var startTick = getTickCount();
+		
 		if( isDebuggerAvailable() ){
+			
 			var qEvents =  metricsDebuggingService.getDebugger().getData();
-			return new Query(dbtype="query",
+			result = new Query(dbtype="query",
 				sql="
 					SELECT template, endTime - startTime AS totalExecutionTime
 					FROM qEvents
@@ -118,14 +135,15 @@ component accessors="true" {
 					"
 				, qEvents=qEvents).execute().getResult();
 
-		} else {
-			return debuggerUnavailableQuery;
 		}
+		
+		metricsCounter.addDebuggerQueryTime( getTickCount() - startTick );
+		return result;
 	}
 
 	private void function submitCollection( summaryQuery ){
 
-		var task = new MetricsParseTask( variables.applicationName, summaryQuery );
+		var task = new MetricsParseTask( summaryQuery, variables.metricsCounter );
 		var proxy = createProxy( task, taskInterfaces );
 
 		try{
@@ -160,6 +178,4 @@ component accessors="true" {
 			return cfcDynamicProxy.createInstance( arguments.object, arguments.interfaces );
 		}
 	}
-
-
 }
