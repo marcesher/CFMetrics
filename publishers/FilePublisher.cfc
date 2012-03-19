@@ -76,7 +76,11 @@ component output="false"{
 		var builder = createObject("java", "java.lang.StringBuilder");
 		var d = variables.fieldDelimiter;
 		for( var result in data ){
+			//much faster than plain old string concat, but still slower on larger datasets compared with the method below
 			//builder.append( "#result.template##d##result.method##d##result.args##d##result.timestamp##d##result.scriptName##d##result.queryString##d##result.totalExecutionTime##chr(10)#" );
+			
+			//this ends up being a teensy bit slower on smaller datasets, but much faster on larger datasets. We'll optimize
+			//for the larget datasets because that is the most common use case
 			builder.append(result.template).append(d)
 				.append(result.method).append(d)
 				.append(result.args).append(d)
