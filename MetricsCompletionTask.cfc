@@ -18,26 +18,38 @@ component output="false" accessors="true"{
 		var allResults = [];
 		var startTick = getTickCount();
 		var thisTask = parseService.poll();
+		
 		while(  NOT isNull( thisTask ) ){
 
 			try
 		    {
 		    	var all = thisTask.get();
-		    	allResults.addAll( all );
+		    	if( isArray(all) ){
+			    	allResults.addAll( all );
+		    	} else {
+		    		writeLog("MetricsCompletionTask: Result of task.get() was not an array... not adding to the publish queue");
+		    	}
 		    }
-		    catch(Any e)
+		    catch( Any e )
 		    {
-		    	writeLog("Error in Metrics Completion Task : #e.getMessage()#; #e.getDetail()#")
+		    	writeLog("Error in Metrics Completion Task polling the queue : #e.getMessage()#; #e.getDetail()#")
 		    }
 
 			thisTask = parseService.poll();
 		}
-
-		if( NOT arrayIsEmpty(allResults) ){
-			for( var publisher in publishers ){
-				publisher.publish( allResults );
+		
+		try
+		{
+			if( NOT arrayIsEmpty(allResults) ){
+				for( var publisher in publishers ){
+					publisher.publish( allResults );
+				}
+				metricsCounter.addPublishCount(1);
 			}
-			metricsCounter.addPublishCount(1);
+		}
+		catch( Any e )
+		{
+			writeLog("Error in Metrics Completion Task publish : #e.getMessage()#; #e.getDetail()#")
 		}
 
 		metricsCounter.addPublishTime( getTickCount() - startTick );

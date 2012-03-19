@@ -11,7 +11,7 @@ component output="false"{
 	* @showHeader Whether to add the header row to the output file
 	* @rolloverFileSize Approximate Size in KB when file will be rolled over
 	*/
-	public function init( string applicationName, string fileOutputDir, string fieldDelimiter="#chr(9)#", boolean showHeader=true, rolloverFileSize=1024){
+	public function init( string applicationName, string fileOutputDir, string fieldDelimiter="#chr(9)#", boolean showHeader=true, rolloverFileSize=5000){
 
 		structAppend( variables, arguments );
 		createObject("java", "java.io.File").init(fileOutputDir).mkdirs();
@@ -28,7 +28,7 @@ component output="false"{
 		var fileName = variables.fileNameStub & ".log";
 		variables.outputFile = fileOutputDir & "/" & fileName;
 		
-		if( requiresNewFile() ){
+		if( NOT fileExists( outputFile ) OR fileRolloverRequired() ){
 			variables.outputFile = fileUtil.createUniqueFileName(fileOutputDir & "/" & fileName);
 			writeLog("FilePublisher: Creating new output file #variables.outputFile#");
 			var output = showHeader ? variables.header : "";
@@ -36,9 +36,13 @@ component output="false"{
 		}
 	}
 	
-	private function requiresNewFile(){
-		return NOT fileExists( outputFile ) 
-			OR getFileInfo( variables.outputFile ).size / 1024 GT rolloverFileSize;
+	private function fileRolloverRequired(){
+		var fileSizeKB = getFileInfo( variables.outputFile ).size / 1024;
+		if(fileSizeKB GT rolloverFileSize){
+			writeLog("FilePublisher: rolling over file. Current size is #fileSizeKB# kb and max allowed is #rolloverFileSize# kb");
+			return true;
+		}
+		return false;
 	}
 	
 
@@ -48,14 +52,12 @@ component output="false"{
 	public function publish( array data ){ 
 
 		initializeOutputFile();
+		var startTick = getTickCount();
+		var stringData = "";
 		
     	try{
-			var d = variables.fieldDelimiter;
-			var stringData = "";
-			
-			for( var result in data ){
-				stringData &= "#result.template##d##result.method##d##result.args##d##result.timestamp##d##result.scriptName##d##result.queryString##d##result.totalExecutionTime##chr(10)#";
-			}
+			stringData = dataToString( data );
+			writeLog("FilePublisher: #getTickCount() - startTick# ms to create data string");
 
 			if(stringData neq ""){
 				fileUtil.cffile(action="append", file=variables.outputFile, output=stringData);
@@ -65,8 +67,25 @@ component output="false"{
     		writeLog("Exception in FilePublisher: #e.message#");
     	}
 		
+		writeLog("FilePublisher: #getTickCount() - startTick# ms to publish #arrayLen(data)# rows");
 
     	return outputFile;
+	}
+	
+	private function dataToString( array data ){
+		var builder = createObject("java", "java.lang.StringBuilder");
+		var d = variables.fieldDelimiter;
+		for( var result in data ){
+			//builder.append( "#result.template##d##result.method##d##result.args##d##result.timestamp##d##result.scriptName##d##result.queryString##d##result.totalExecutionTime##chr(10)#" );
+			builder.append(result.template).append(d)
+				.append(result.method).append(d)
+				.append(result.args).append(d)
+				.append(result.timestamp).append(d)
+				.append(result.scriptName).append(d)
+				.append(result.queryString).append(d)
+				.append(result.totalExecutionTime).append(chr(10));
+		}
+		return builder.toString();
 	}
 
 }

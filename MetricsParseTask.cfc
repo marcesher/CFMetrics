@@ -6,7 +6,7 @@ component output="false"{
 	public function init( query metricsQuery, MetricsCounter metricsCounter ){
 
 		structAppend( variables, arguments );
-		variables.timestamp = now();
+		var timestamp = now();
 		variables.parseResultStaticData = { timestamp = dateFormat(timestamp, "yyyy-mm-dd") & " " & timeFormat(timestamp, "HH:mm:ss"), scriptName = cgi.SCRIPT_NAME, queryString = cgi.QUERY_STRING };
 		variables.startQueueTick = getTickCount();
 		metricsCounter.addParseEventCount( metricsQuery.recordCount );
@@ -14,7 +14,7 @@ component output="false"{
 	}
 
 	public any function call(){
-		writeLog("inside call");
+
 		var result = "";
 		var startTick = getTickCount();
 		metricsCounter.addParseQueueTime( startTick - variables.startQueueTick );
