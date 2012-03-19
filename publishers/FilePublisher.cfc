@@ -18,16 +18,14 @@ component output="false"{
 		var headerFields = ["template", "method", "args", "timestamp", "scriptName", "queryString", "totalExecutionTime"];
 		variables.header = arrayToList(headerFields, fieldDelimiter) & chr(10);
 		variables.fileNameStub = dateFormat(now(), "mm_dd_yyyy") & "_" & timeFormat(now(), "hh_mm_ss");
+		variables.fileName = variables.fileNameStub & ".log";
+		variables.outputFile = fileOutputDir & "/" & fileName;
 		variables.fileUtil = createObject( "component", "cfmetrics.util.FileUtil" );
 		
 		return this;
 	}
 	
 	private function initializeOutputFile(){
-		
-		var fileName = variables.fileNameStub & ".log";
-		variables.outputFile = fileOutputDir & "/" & fileName;
-		
 		if( NOT fileExists( outputFile ) OR fileRolloverRequired() ){
 			variables.outputFile = fileUtil.createUniqueFileName(fileOutputDir & "/" & fileName);
 			writeLog("FilePublisher: Creating new output file #variables.outputFile#");
@@ -75,7 +73,8 @@ component output="false"{
 	private function dataToString( array data ){
 		var builder = createObject("java", "java.lang.StringBuilder");
 		var d = variables.fieldDelimiter;
-		for( var result in data ){
+		var result = "";
+		for( result in data ){
 			//much faster than plain old string concat, but still slower on larger datasets compared with the method below
 			//builder.append( "#result.template##d##result.method##d##result.args##d##result.timestamp##d##result.scriptName##d##result.queryString##d##result.totalExecutionTime##chr(10)#" );
 			

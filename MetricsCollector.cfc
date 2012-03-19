@@ -1,6 +1,5 @@
 component accessors="true" {
 
-	hasBeenStarted = false;
 	taskInterfaces = ["java.util.concurrent.Callable"];
 	supportsNativeProxy = structKeyExists( getFunctionList(), "createDynamicProxy" );
 	status = "stopped";
@@ -35,16 +34,13 @@ component accessors="true" {
 		var proxy = createProxy( metricsCompletionTask, ["java.lang.Runnable"] );
 		variables.metricsCompletionService.scheduleAtFixedRate( proxy, publishFrequency, publishFrequency, timeUnit.SECONDS );
 
-
-		hasBeenStarted = true;
 		status = "started";
 		return this;
 	}
 
 	public function stop(){
-		if( hasBeenStarted ){
-			variables.metricsExecutorThreadPool.shutdown();
-			variables.metricsExecutorThreadPool.awaitTermination( 1, timeUnit.SECONDS );
+		if( isDefined("metricsExecutorThreadPool") ){
+			variables.metricsExecutorThreadPool.shutdownNow();
 			variables.metricsCompletionService.shutdownNow();
 		}
 
@@ -74,6 +70,7 @@ component accessors="true" {
 			if( summary.recordCount ){
 				submitCollection( summary );
 			}
+			writeLog("Collection Submitted.");
 			return summary;
 		} else {
 			return serviceNotRunningQuery;
