@@ -17,14 +17,14 @@ component output="false"{
 		createObject("java", "java.io.File").init(fileOutputDir).mkdirs();
 		var headerFields = ["template", "method", "args", "timestamp", "scriptName", "queryString", "totalExecutionTime"];
 		variables.header = arrayToList(headerFields, fieldDelimiter) & chr(10);
-		variables.fileNameStub = dateFormat(now(), "mm_dd_yyyy") & "_" & timeFormat(now(), "hh_mm_ss");
+		variables.fileNameStub = dateFormat(now(), "mm_dd_yyyy") & "_" & timeFormat(now(), "HH_mm_ss");
 		variables.fileName = variables.fileNameStub & ".log";
 		variables.outputFile = fileOutputDir & "/" & fileName;
 		variables.fileUtil = createObject( "component", "cfmetrics.util.FileUtil" );
-		
+
 		return this;
 	}
-	
+
 	private function initializeOutputFile(){
 		if( NOT fileExists( outputFile ) OR fileRolloverRequired() ){
 			variables.outputFile = fileUtil.createUniqueFileName(fileOutputDir & "/" & fileName);
@@ -33,7 +33,7 @@ component output="false"{
 			fileWrite( outputFile, output );
 		}
 	}
-	
+
 	private function fileRolloverRequired(){
 		var fileSizeKB = getFileInfo( variables.outputFile ).size / 1024;
 		if(fileSizeKB GT rolloverFileSize){
@@ -42,17 +42,17 @@ component output="false"{
 		}
 		return false;
 	}
-	
+
 
 	/**
 	* @data An array of structs. Each struct will contain fields: template, method, args, totalExecutionTime
 	*/
-	public function publish( array data ){ 
+	public function publish( array data ){
 
 		initializeOutputFile();
 		var startTick = getTickCount();
 		var stringData = "";
-		
+
     	try{
 			stringData = dataToString( data );
 			writeLog("FilePublisher: #getTickCount() - startTick# ms to create data string");
@@ -64,12 +64,12 @@ component output="false"{
     	} catch( any e ){
     		writeLog("Exception in FilePublisher: #e.message#");
     	}
-		
+
 		writeLog("FilePublisher: #getTickCount() - startTick# ms to publish #arrayLen(data)# rows");
 
     	return outputFile;
 	}
-	
+
 	private function dataToString( array data ){
 		var builder = createObject("java", "java.lang.StringBuilder");
 		var d = variables.fieldDelimiter;
@@ -77,7 +77,7 @@ component output="false"{
 		for( result in data ){
 			//much faster than plain old string concat, but still slower on larger datasets compared with the method below
 			//builder.append( "#result.template##d##result.method##d##result.args##d##result.timestamp##d##result.scriptName##d##result.queryString##d##result.totalExecutionTime##chr(10)#" );
-			
+
 			//this ends up being a teensy bit slower on smaller datasets, but much faster on larger datasets. We'll optimize
 			//for the larget datasets because that is the most common use case
 			builder.append(result.template).append(d)

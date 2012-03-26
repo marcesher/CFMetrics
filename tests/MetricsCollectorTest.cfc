@@ -64,10 +64,11 @@ component extends="cfmetrics.tests.BaseCFMetricsTestCase"{
 
 		assertEquals( initialExpectedSize * 2, arrayLen(pub1Result2) );
 		assertEquals( initialExpectedSize * 2, arrayLen(pub2Result2) );
-		
+
 		var counters = collector.getCFMetricsCounters();
 		assertEquals( 2, counters.publishCount );
-		assertTrue( counters.publishtime GT 0 );
+		debug(counters);
+		//assertTrue( counters.publishtime GT 0 );
 	}
 
 	function collect_returns_empty_query_when_service_not_running(){
@@ -82,7 +83,7 @@ component extends="cfmetrics.tests.BaseCFMetricsTestCase"{
 		var result = collector.collect();
 		assertEquals( 0, result.recordCount );
 	}
-	
+
 	private function submitCollection(){
 		injectProperty(collector, "thisDir", thisDir);
 		injectMethod(collector, this, "getTestQuery", "getMetricsDataFromDebugger");

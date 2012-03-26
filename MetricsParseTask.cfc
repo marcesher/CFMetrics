@@ -18,18 +18,18 @@ component output="false"{
 		var result = "";
 		var startTick = getTickCount();
 		metricsCounter.addParseQueueTime( startTick - variables.startQueueTick );
-		
+
 		try{
 			result = createMetrics();
 		} catch( any e ){
 			writeLog("Exception in MetricsParseTask.call(): #e.message#");
 			result = e;
 		}
-		
+
 		metricsCounter
 			.addParseTime( getTickCount() - startTick )
 			.addParseCount(1);
-		
+
 		return result;
 	}
 
